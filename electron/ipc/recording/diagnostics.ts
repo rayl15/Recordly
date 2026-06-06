@@ -526,7 +526,12 @@ export async function getCompanionAudioFallbackInfo(videoPath: string) {
 		);
 
 		if (!hasUsableMacSystemCompanion && usableMacMicOnlyCompanions.length > 0) {
-			paths = usableMacMicOnlyCompanions;
+			// The video already has the mic baked into an inline audio track, and a
+			// dedicated mic sidecar exists. Include the video path so the editor knows
+			// the embedded audio is present and mutes/excludes it, using the sidecar as
+			// the single source. Omitting it makes hasEmbeddedSourceAudio false, which
+			// triggers the legacy mix of embedded mic + sidecar mic (echo/reverb).
+			paths = [videoPath, ...usableMacMicOnlyCompanions];
 		} else {
 			const companionPaths = Array.from(
 				new Set(

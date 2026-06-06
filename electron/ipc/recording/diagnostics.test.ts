@@ -134,7 +134,7 @@ describe("getCompanionAudioFallbackPaths", () => {
 		]);
 	});
 
-	it("prefers the mac mic companion alone when embedded audio already exists and no system sidecar is present", async () => {
+	it("includes the video alongside the mac mic companion when embedded audio exists and no system sidecar is present", async () => {
 		const videoPath = path.join(tempRoot, "recording.mp4");
 		const micPath = path.join(tempRoot, "recording.mic.m4a");
 
@@ -157,7 +157,13 @@ describe("getCompanionAudioFallbackPaths", () => {
 
 		const { getCompanionAudioFallbackPaths } = await import("./diagnostics");
 
-		await expect(getCompanionAudioFallbackPaths(videoPath)).resolves.toEqual([micPath]);
+		// The video path must be present so the editor detects the embedded (baked-in)
+		// mic track and mutes it, using the mic sidecar as the single source. Omitting
+		// it double-mixes the mic (echo/reverb). See sourceTrackRoutingPolicy.
+		await expect(getCompanionAudioFallbackPaths(videoPath)).resolves.toEqual([
+			videoPath,
+			micPath,
+		]);
 	});
 
 	it("loads saved sidecar timing metadata alongside companion audio paths", async () => {
