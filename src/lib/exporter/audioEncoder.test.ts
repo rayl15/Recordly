@@ -53,7 +53,11 @@ function fakeAudioBuffer(channels: Float32Array[]): AudioBuffer {
 }
 
 describe("AudioProcessor offline render preparation", () => {
-	it("keeps embedded source audio separate from external companion sidecars", async () => {
+	it("drops embedded audio that duplicates a mic sidecar to avoid echo", async () => {
+		// Native macOS bakes the mic into the .mp4 when only the mic is captured and
+		// also writes a .mic sidecar. Listing the video itself marks it as having
+		// embedded audio, so the embedded track must be excluded from the export to
+		// avoid the mic being mixed in twice (echo).
 		const processor = new AudioProcessor() as unknown as OfflineRenderTestHarness;
 		const mainBuffer = { duration: 10, numberOfChannels: 2 } as AudioBuffer;
 		const micBuffer = { duration: 9.5, numberOfChannels: 1 } as AudioBuffer;
@@ -79,14 +83,12 @@ describe("AudioProcessor offline render preparation", () => {
 			["/tmp/recording.mp4", "/tmp/recording.mic.wav"],
 		);
 
-		expect(prepared.mainBufferEntry?.buffer).toBe(mainBuffer);
-		expect(prepared.mainBufferEntry?.gain).toBe(1);
+		expect(prepared.mainBufferEntry).toBeNull();
 		expect(prepared.companionEntries).toHaveLength(1);
 		expect(prepared.companionEntries[0]?.buffer).toBe(micBuffer);
 		expect(prepared.companionEntries[0]?.gain).toBe(1);
-		expect(decodeAudioFromUrl).toHaveBeenCalledWith("file:///tmp/recording.mp4");
 		expect(decodeAudioFromUrl).toHaveBeenCalledWith("/tmp/recording.mic.wav");
-		expect(decodeAudioFromUrl).not.toHaveBeenCalledWith("/tmp/recording.mp4");
+		expect(decodeAudioFromUrl).not.toHaveBeenCalledWith("file:///tmp/recording.mp4");
 	});
 
 	it("does not treat a single embedded fallback path as an external sidecar", async () => {

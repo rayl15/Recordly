@@ -68,7 +68,15 @@ export function buildResolvedAudioPlan(input: {
 	if (pathsByTrack.mic) playbackPaths.push(pathsByTrack.mic);
 	if (!hasDedicatedTracks && pathsByTrack.mixed) playbackPaths.push(pathsByTrack.mixed);
 
-	const includeEmbeddedInExport = !pathsByTrack.system && !pathsByTrack.mixed;
+	// Native macOS bakes an inline audio track into the recorded .mp4 in addition
+	// to writing dedicated sidecars. When only the mic is captured, that inline
+	// track *is* the mic and duplicates the .mic sidecar, so keeping it produces
+	// doubled/echoed audio. Drop the embedded track whenever it duplicates a
+	// dedicated sidecar. Legacy recordings without embedded audio
+	// (hasEmbeddedSourceAudio === false) still rely on the mic sidecar mix.
+	const embeddedDuplicatesDedicatedTrack = hasEmbeddedSourceAudio && hasDedicatedTracks;
+	const includeEmbeddedInExport =
+		!pathsByTrack.system && !pathsByTrack.mixed && !embeddedDuplicatesDedicatedTrack;
 	const resolvedRegions = (input.audioRegions ?? []).slice().sort((a, b) => a.startMs - b.startMs);
 	const tracks: ResolvedAudioTrack[] = resolvedRegions.map((region) => ({
 		id: `user:${region.id}`,
